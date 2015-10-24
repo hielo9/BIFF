@@ -339,18 +339,19 @@ ParticleSystem::ParticleSystem(uint maxNumParticles, uint numParticles, uint3 nu
     m_bUseOpenGL(bUseOpenGL),
     m_numParticles(numParticles),
     m_hPos(0),
-    m_hVel(0),
     m_hSortedPos(0),
-    m_hRandom(0),
+    m_hMom(0),
     m_hScalar(0),
     m_hSortedScalar(0),
+    m_hRandom(0),
     m_dPos(0),
-    m_dVel(0),
-    m_dRandom(0),
-    //m_dRandom1(0),
-    //m_dRandom2(0),
+    m_dMom(0),
+    m_dAngMom(0),
+    m_dMass(0),
+    m_dSortedMass(0),
     m_dScalar(0),
     m_dSortedScalar(0),
+    m_dRandom(0),
     m_numCells(numCells),
     m_numVelNodes(numVelNodes),
     m_timer(NULL),
@@ -882,10 +883,18 @@ ParticleSystem::_initializeMax(int maxNumParticles, int numParticles, uint3 &num
     m_hPos          = new float[m_maxNumParticles*4];
     printf("Allocate host storage (sorted positions)\n");
     m_hSortedPos    = new float[m_maxNumParticles*4];
-    printf("Allocate host storage (velocities)\n");
-    m_hVel          = new float[m_maxNumParticles*4];
-    printf("Allocate host storage (randoms)\n");
-    m_hRandom       = new float[m_maxNumParticles*3];
+    printf("Allocate host storage (momenta)\n");
+    m_hMom          = new float[m_maxNumParticles*4];
+    printf("Allocate host storage (sorted momenta)\n");
+    m_hSortedMom    = new float[m_maxNumParticles*4];
+    printf("Allocate host storage (angular momenta)\n");
+    m_hAngMom       = new float[m_maxNumParticles*4];
+    printf("Allocate host storage (sorted angular momenta)\n");
+    m_hSortedAngMom = new float[m_maxNumParticles*4];
+    printf("Allocate host storage (mass)\n");
+    m_hMass         = new float[m_maxNumParticles];
+    printf("Allocate host storage (sorted mass)\n");
+    m_hSortedMass   = new float[m_maxNumParticles];
     printf("Allocate host storage (scalars)\n");
     m_hScalar       = new float[m_maxNumParticles];
     printf("Allocate host storage (sorted scalars)\n");
@@ -894,6 +903,8 @@ ParticleSystem::_initializeMax(int maxNumParticles, int numParticles, uint3 &num
     m_hDiamBins = new float[m_maxNumParticles*m_numBins];
     printf("Allocate host storage (sorted bins)\n");
     m_hSortedDiamBins = new float[m_maxNumParticles*m_numBins];
+    printf("Allocate host storage (randoms)\n");
+    m_hRandom       = new float[m_maxNumParticles*3];
     printf("Allocate host storage (colors)\n");
     m_hColors = new float[m_maxNumParticles];
 
@@ -923,10 +934,16 @@ ParticleSystem::_initializeMax(int maxNumParticles, int numParticles, uint3 &num
     memset(m_hPos,          0, m_maxNumParticles*4*sizeof(float));
     printf("MEMSET (sorted positions)\n");
     memset(m_hSortedPos,    0, m_maxNumParticles*4*sizeof(float));
-    printf("MEMSET (velocities)\n");
-    memset(m_hVel,          0, m_maxNumParticles*4*sizeof(float));
-    printf("MEMSET (randoms)\n");
-    memset(m_hRandom,       0, m_maxNumParticles*sizeof(float));
+    printf("MEMSET (momenta)\n");
+    memset(m_hMom,          0, m_maxNumParticles*4*sizeof(float));
+    printf("MEMSET (sorted momenta)\n");
+    memset(m_hSortedMom,    0, m_maxNumParticles*4*sizeof(float));
+    printf("MEMSET (angular momenta)\n");
+    memset(m_hAngMom,       0, m_maxNumParticles*4*sizeof(float));
+    printf("MEMSET (sorted angular momenta)\n");
+    memset(m_hSortedAngMom, 0, m_maxNumParticles*4*sizeof(float));
+    printf("MEMSET (mass)\n");
+    memset(m_hMass,         0, m_maxNumParticles*sizeof(float));
     printf("MEMSET (scalars)\n");
     memset(m_hScalar,       0, m_maxNumParticles*sizeof(float));
     printf("MEMSET (sorted scalars)\n");
@@ -935,6 +952,8 @@ ParticleSystem::_initializeMax(int maxNumParticles, int numParticles, uint3 &num
     memset(m_hDiamBins, 0, m_maxNumParticles*m_numBins*sizeof(float));
     printf("MEMSET (sorted bins)\n");
     memset(m_hSortedDiamBins, 0, m_maxNumParticles*m_numBins*sizeof(float));
+    printf("MEMSET (randoms)\n");
+    memset(m_hRandom,       0, m_maxNumParticles*sizeof(float));
     printf("MEMSET (colors)\n");
     memset(m_hColors, 0, m_maxNumParticles*sizeof(float));
 
@@ -2122,42 +2141,6 @@ void ParticleSystem::update(float deltaTime) {
 
 	printf("num of particles 3: %d\n",m_numParticles);
 
-/*
-	if (n_iter>m_histLength) {
-		for (int i=0;i<m_params.numVelCells.x;i++) {
-			for (int k=0;k<m_params.numVelCells.z;k++) {
-				if (i==0) {
-					m_params.dUr[i][k] = 1.0 * (m_dens[k*m_params.numVelCells.x+i]-m_dens[k*m_params.numVelCells.x+i+1]);
-				} else if (i == m_params.numVelCells.x-1) {
-					m_params.dUr[i][k] = 1.0 * (m_dens[k*m_params.numVelCells.x+i-1]-m_dens[k*m_params.numVelCells.x+i]);
-				} else {
-					m_params.dUr[i][k] = 1.0 * (m_dens[k*m_params.numVelCells.x+i-1]-m_dens[k*m_params.numVelCells.x+i+1]);
-				}
-				if (k==0) {
-					m_params.dUz[i][k] = 1.0 * (m_dens[k*m_params.numVelCells.x+i]-m_dens[(k+1)*m_params.numVelCells.x+i]);
-				} else if (k == m_params.numVelCells.z-1) {
-					m_params.dUz[i][k] = 1.0 * (m_dens[(k-1)*m_params.numVelCells.x+i]-m_dens[k*m_params.numVelCells.x+i]);
-				} else {
-					m_params.dUz[i][k] = 1.0 * (m_dens[(k-1)*m_params.numVelCells.x+i]-m_dens[(k+1)*m_params.numVelCells.x+i]);
-				}
-			}
-		}
-	}
-*/
-	//for (int i=0;i<m_maxNumParticles;i++) {
-	//	if (m_hSortedDiamBins[i*m_params.numBins]<1.0) {
-	//		printf("well2, %f %d\n",m_hSortedDiamBins[i*m_params.numBins],i);
-	//	}
-	//}
-	//cin.ignore();
-
-	//m_numParticles,
-	//m_numTotalVelCells);
-
-	//copyArrayToDevice(dPos,        m_hPos,      0, sizeof(float) * m_maxNumParticles * 4);
-	//copyArrayToDevice(m_dScalar,   m_hScalar,   0, sizeof(float) * m_maxNumParticles);
-	//copyArrayToDevice(m_dDiamBins, m_hDiamBins, 0, sizeof(float) * m_maxNumParticles * m_params.numBins);
-
 	copyArrayToDevice(dPos,        m_hSortedPos,      0, sizeof(float) * m_maxNumParticles * 4);
 	copyArrayToDevice(m_dScalar,   m_hSortedScalar,   0, sizeof(float) * m_maxNumParticles);
 	copyArrayToDevice(m_dDiamBins, m_hSortedDiamBins, 0, sizeof(float) * m_maxNumParticles * m_params.numBins);
@@ -2196,53 +2179,19 @@ void ParticleSystem::update(float deltaTime) {
 								m_numParticles,
 								m_numTotalCells);
 	printf("Data reordered\n");
-/*
-	copyArrayToHost(m_hSortedPos,      m_dSortedPos,         0, sizeof(float) * m_maxNumParticles * 4);
-	printf("Boundaries processed %d %d\n",m_numTotalVelCells,m_numTotalCells);
-	//m_numParticles = counter;
-	for (int i=0;i<m_maxNumParticles;i++) {
-		if (m_hSortedPos[i*4+3]<0) {
-			printf("%d Vs. %d\n",i,m_numParticles);
-			if (i!=m_numParticles) {
-				cin.ignore();
-			}
-			break;
-		} else {
-			if (m_hSortedPos[i*4]>0.2) {
-				printf("This is a SIGN\n");
-			}
-		}
-	}
-*/
+
 	bool balanceCuda = true;
 	printf("Balance cells\n");
 	//counter = m_numParticles;
 
 	copyArrayToHost(m_hSortedPos,     m_dSortedPos,         0, sizeof(float)*m_maxNumParticles*4);
-	 copyArrayToHost(m_hSortedScalar,  m_dSortedScalar,      0, sizeof(float)*m_maxNumParticles);
-	 copyArrayToHost(m_hSortedDiamBins,m_dSortedDiamBins,    0, sizeof(float)*m_maxNumParticles * m_params.numBins);
-	 copyArrayToHost(m_hParticleIndex, m_dGridParticleIndex, 0, sizeof(uint)*m_maxNumParticles);
-	 copyArrayToHost(m_hParticleHash,  m_dGridParticleHash,  0, sizeof(uint)*m_maxNumParticles);
-	 copyArrayToHost(m_hCellStart,     m_dCellStart, 0, sizeof(uint)*m_numTotalCells);
-	 copyArrayToHost(m_hCellEnd,       m_dCellEnd, 0, sizeof(uint)*m_numTotalCells);
+	copyArrayToHost(m_hSortedScalar,  m_dSortedScalar,      0, sizeof(float)*m_maxNumParticles);
+	copyArrayToHost(m_hSortedDiamBins,m_dSortedDiamBins,    0, sizeof(float)*m_maxNumParticles * m_params.numBins);
+	copyArrayToHost(m_hParticleIndex, m_dGridParticleIndex, 0, sizeof(uint)*m_maxNumParticles);
+	copyArrayToHost(m_hParticleHash,  m_dGridParticleHash,  0, sizeof(uint)*m_maxNumParticles);
+	copyArrayToHost(m_hCellStart,     m_dCellStart, 0, sizeof(uint)*m_numTotalCells);
+	copyArrayToHost(m_hCellEnd,       m_dCellEnd, 0, sizeof(uint)*m_numTotalCells);
 
-/*
-	for (int k=0;k<m_numCells.z;k++) {
-		for (int i=0;i<m_numCells.x;i++) {
-			printf("i%d ",m_hCellStart[k*m_numCells.x+i]);
-		}
-		printf("\n");
-	}
-	printf("total cells1: %d %d %d\n",m_numTotalCells,m_numCells.z,m_numCells.x);
-	//cin.ignore();
-	for (int k=0;k<m_numCells.z;k++) {
-		for (int i=0;i<m_numCells.x;i++) {
-			printf("i%d ",(int)m_hCellEnd[k*m_numCells.x+i]);
-		}
-		printf("\n");
-	}
-	//cin.ignore();
-*/
 	printf("num of particles 2: %d\n",m_numParticles);
 
 	for (int i=0;i<m_maxNumParticles;i++) {
@@ -2257,24 +2206,7 @@ void ParticleSystem::update(float deltaTime) {
 	printf("Passed veeS\n");
 
 	if (!balanceCuda) {
-/*
-	balanceCells(
-	 // m_hPos,
-	 // m_hScalar,
-	 m_hSortedPos,         // send off the sorted positions
-	 m_hSortedScalar,         // send off the sorted scalars
-	 m_hSortedDiamBins,
-	 m_hParticleHash,
-	 m_hParticleIndex,
-	 m_hCellStart,
-	 m_hCellEnd,
-	 m_maxNumParticles,
-//	 counter,
-	 m_numParticles);
-//	 m_numTotalCells);
-*/
-	 //copyArrayToDevice(dPos,      m_hPos,    0, sizeof(float)*m_maxNumParticles*4);
-	 //copyArrayToDevice(m_dScalar, m_hScalar, 0, sizeof(float)*m_maxNumParticles);
+
 	 copyArrayToDevice(m_dSortedPos,      m_hSortedPos,    0, sizeof(float)*m_maxNumParticles*4);
 	 copyArrayToDevice(m_dScalar, m_hSortedScalar, 0, sizeof(float)*m_maxNumParticles);
 	 copyArrayToDevice(m_dSortedDiamBins, m_hSortedDiamBins, 0, sizeof(float)*m_maxNumParticles*m_params.numBins);
@@ -2297,39 +2229,10 @@ void ParticleSystem::update(float deltaTime) {
 			m_numTotalCells);
 	threadSync();
 
-	//copyArrayToHost  (m_hSortedDiamBins,     m_dSortedDiamBins, 0, sizeof(float) * m_maxNumParticles * m_params.numBins);
-	//for (int i=0;i<m_maxNumParticles;i++) {
-	//	if (m_hSortedDiamBins[i*m_params.numBins]<1.0) {
-	//		printf("well3, %f %d\n",m_hSortedDiamBins[i*m_params.numBins],i);
-	//	}
-	//}
 	}
 
-/*
-	copyArrayToHost  (m_hSortedPos,    m_dSortedPos,      0, sizeof(float) * m_maxNumParticles * 4);
-	copyArrayToHost  (m_hSortedScalar, m_dSortedScalar,   0, sizeof(float) * m_maxNumParticles);
-	copyArrayToHost  (m_hDiamBins,     m_dSortedDiamBins, 0, sizeof(float) * m_maxNumParticles * m_params.numBins);
-	copyArrayToDevice(dPos,            m_hSortedPos,      0, sizeof(float) * m_maxNumParticles * 4);
-	copyArrayToDevice(m_dScalar,       m_hSortedScalar,   0, sizeof(float) * m_maxNumParticles);
-	copyArrayToDevice(m_dDiamBins,     m_hDiamBins,       0, sizeof(float) * m_maxNumParticles * m_params.numBins);
-	//copyArrayToDevice(m_dDiamBins, m_hSortedScalar, 0, sizeof(float)*m_maxNumParticles*m_params.numBins);
-*/
-	//m_numParticles = counter;
 	printf("Cells balanced, np %d\n", m_numParticles);
-/*
-	copyArrayToHost(m_hSortedPos,     m_dSortedPos,         0, sizeof(float) * m_maxNumParticles * 4);
 
-	for (int i=0;i<m_maxNumParticles;i++) {
-		if (m_hSortedPos[i*4+3]<0.0) {
-			printf("%d V. %d\n",i,m_numParticles);
-			if (i!=m_numParticles) {
-				cin.ignore();
-			}
-			break;
-		}
-	}
-*/
-	//int prevNumParticles = m_numParticles;
 	calcNewHashMax( m_dGridParticleHash, // determine this based on the cell the particle is in
 					m_dGridParticleIndex, // determine index based on the thread location
 					m_dSortedPos, // use position to calc the hash
@@ -2399,9 +2302,6 @@ void ParticleSystem::update(float deltaTime) {
 	// -----------------------
 	//   PREPPING FOR MIXING
 	// -----------------------
-//	copyArrayToHost(m_hSortedPos,      m_dSortedPos,         0, sizeof(float) * m_maxNumParticles * 4);
-//	copyArrayToHost(m_hSortedScalar,   m_dSortedScalar,      0, sizeof(float) * m_maxNumParticles);
-//	copyArrayToHost(m_hSortedDiamBins, m_dSortedDiamBins,    0, sizeof(float) * m_maxNumParticles * m_params.numBins);
 	copyArrayToHost(m_hSortedPos,      dPos,         0, sizeof(float) * m_maxNumParticles * 4);
 	copyArrayToHost(m_hSortedScalar,   m_dScalar,      0, sizeof(float) * m_maxNumParticles);
 	copyArrayToHost(m_hSortedDiamBins, m_dDiamBins,    0, sizeof(float) * m_maxNumParticles * m_params.numBins);
@@ -2419,12 +2319,6 @@ void ParticleSystem::update(float deltaTime) {
 		}
 	}
 
-	//for (int i=0;i<m_maxNumParticles;i++) {
-	//	if (m_hSortedDiamBins[i*m_params.numBins]<1.0) {
-	//		printf("well3.5, %f %d\n",m_hSortedDiamBins[i*m_params.numBins],i);
-	//	}
-	//}
-
 	printf("Off to mixing\n");
 	if (true) {
 		mixCurl(m_hSortedPos,
@@ -2437,26 +2331,12 @@ void ParticleSystem::update(float deltaTime) {
 
 	threadSync();
 
-	//for (int i=0;i<m_maxNumParticles;i++) {
-	//	if (m_hSortedDiamBins[i*m_params.numBins]<1.0) {
-	//		printf("well4, %f %d\n",m_hSortedDiamBins[i*m_params.numBins],i);
-	//	}
-	//}
-
 	copyArrayToHost  (m_hColors,        m_dColors,         0, sizeof(float) * m_maxNumParticles);
 //	copyArrayToHost  (m_hSortedPos,     m_dSortedPos,      0, sizeof(float) * m_maxNumParticles * 4);
 //	copyArrayToHost  (m_hVel,           m_dSortedVel,      0, sizeof(float) * m_maxNumParticles * 4);
 //	copyArrayToHost  (m_hSortedDiamBins,m_dSortedDiamBins, 0, sizeof(float) * m_maxNumParticles * m_params.numBins);
 //	copyArrayToHost  (m_hSortedScalar,  m_dSortedScalar,   0, sizeof(float) * m_maxNumParticles);
 	printf("More host copying\n");
-/*
-	for (int i=0;i<m_maxNumParticles;i++) {
-		if (m_hVel[i*4]>3.0) {
-			printf("This is a VEL sign:     %d %f %f %f %e\n",i,m_hVel[i*4],m_hVel[i*4+1],m_hVel[i*4+2],m_hVel[i*4+3]);
-		}
-	}
-*/
-	//cin.ignore();
 
 	copyArrayToDevice(dPos,             m_hSortedPos,      0, sizeof(float) * m_maxNumParticles * 4);
 //	copyArrayToDevice(m_dVel,           m_hVel,            0, sizeof(float) * m_maxNumParticles * 4);
@@ -2464,54 +2344,11 @@ void ParticleSystem::update(float deltaTime) {
 	copyArrayToDevice(m_dScalar,        m_hSortedScalar,   0, sizeof(float) * m_maxNumParticles);
 	printf("Copied to device\n");
 
-/*
+
 	// -----------------------
 	//   PREPPING FOR ADVECT
 	// -----------------------
-	//int prevNumParticles = m_numParticles;
-	calcNewVelHashMax(m_dGridParticleHash, // determine this based on the cell the particle is in
-					  m_dGridParticleIndex, // determine index based on the thread location
-					  m_dSortedPos, // use position to calc the hash
-					  m_maxNumParticles);
-	printf("Hash calculated\n");
-	// sort particles based on hash
-	sortParticles(m_dGridParticleHash, // array by which to sort
-				  m_dGridParticleIndex, // array gets rearraged based on hash sorting
-				  m_maxNumParticles);
-	printf("Particles sorted 2\n");
-	// reorder particle arrays into sorted order and
-	// find start and end of each cell
-	// first declared in particleSystem.cuh
-	printf("Reorder data\n");
-	reorderDataAndFindCellStart(m_dVelCellStart,
-								m_dVelCellEnd,
-								dPos,
-								m_dVel,
-								m_dScalar,
-								m_dDiamBins,
-								m_dGridParticleHash,
-								m_dGridParticleIndex,
-								m_dSortedPos,
-								m_dSortedVel,
-								m_dSortedScalar,
-								m_dSortedDiamBins,
-								m_maxNumParticles,
-								m_numParticles,
-								m_numTotalVelNodes);
-	printf("num of particles 1: %d\n",m_numParticles);
 
-	copyArrayToHost(m_hSortedPos,     dPos,         0, sizeof(float) * m_maxNumParticles * 4);
-	for (int i=0;i<m_maxNumParticles;i++) {
-		if (m_hSortedPos[i*4+3]<0.0) {
-			printf("%d vS. %d\n",i,m_numParticles);
-			if (i!=m_numParticles) {
-				cin.ignore();
-			}
-			break;
-		}
-	}
-	//cin.ignore();
-*/
 	printf("Data reordered\n");
 	printf("Process advection\n");
 	for (int i = 0; i < m_maxNumParticles * 3; i++) {
@@ -2542,12 +2379,6 @@ void ParticleSystem::update(float deltaTime) {
 	printf("Advection processed\n");
 
 	copyArrayToHost  (m_hVel,        m_dVel,         0, sizeof(float) * m_maxNumParticles*4);
-
-	//for (int i=0;i<m_maxNumParticles;i++) {
-	//	if (m_hSortedDiamBins[i*m_params.numBins]<1.0) {
-	//		printf("well5, %f %d\n",m_hSortedDiamBins[i*m_params.numBins],i);
-	//	}
-	//}
 
 	for (int i=0;i<m_numCells.x;i++) {
 		for (int k=0;k<m_numCells.z;k++) {
@@ -2668,7 +2499,8 @@ void ParticleSystem::update(float deltaTime) {
 	}
 	printf("reemerge2\n");
 
-	if (m_loopCounter%4==2) {
+//	if (m_loopCounter%4==2) {
+	if (1==2) {
 		glBegin(GL_LINES);
 		glColor3f(0.0, 0.6, 0.0);
 		printf("do these lines!\n");
@@ -2683,7 +2515,8 @@ void ParticleSystem::update(float deltaTime) {
 		}
 		glEnd();
 	}
-	if (m_loopCounter%4==0) {
+//	if (m_loopCounter%4==0) {
+	if (1==2) {
 		glBegin(GL_LINES);
 		glColor3f(0.0, 0.6, 0.6);
 		for (int i = 0; i < m_params.numVelNodes.z; i++) {
@@ -2795,14 +2628,7 @@ void ParticleSystem::saveCells()
 			//fprintf(fdiam,"%f\n",m_cellDiams[i*m_numCells.z*m_numBins+(k+1)*m_numBins-1]);
 		}
 	}
-/*
-	for (int i=0;i<m_numVelCells.x;i++) {
-		for (int k=0;k<m_numVelCells.z;k++) {
-			fprintf(fvelr,"%e %d %d\n",m_hUr[i*m_numVelCells.z+k]+m_hGradRNut[i*m_numVelCells.z+k]/m_params.schmidt/m_params.density_rho,i,k);
-			fprintf(fvelz,"%e %d %d\n",m_hUz[i*m_numVelCells.z+k]+m_hGradZNut[i*m_numVelCells.z+k]/m_params.schmidt/m_params.density_rho,i,k);
-		}
-	}
-	*/
+
 	fclose(fmass);
 	//fclose(fdensity);
 	fclose(fvolume);

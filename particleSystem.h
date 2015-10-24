@@ -240,31 +240,45 @@ protected:
 	float m_binSize;
 	uint m_numBins;
 	// CPU data
-	float* m_hPos; // particle positions
+	float* m_hPos;          // particle positions
 	float* m_hSortedPos;
-	float* m_hVel; // particle velocities
-	float* m_hScalar; // particle scalars
-	float* m_hSortedScalar; // particle scalars
-	float* m_hRandom;
-	float* m_hDiamBins;
+	float* m_hMom;          // particle momenta
+	float* m_hAngMom;       // particle angular momenta
+	float* m_hSortedAngMom;
+	float* m_hMass;         // particle mass
+	float* m_hSortedMass;
+	float* m_hScalar;       // particle scalars
+	float* m_hSortedScalar;
+	float* m_hDiamBins;     // particle droplet histogram
 	float* m_hSortedDiamBins;
+	float* m_hRandom;
 	float* m_hColors;
 	//float *m_hSortedColor;
+
 	uint* m_hParticleHash;
 	uint* m_hParticleIndex;
 	uint* m_hCellStart;
-	uint* m_hVelCellStart;
 	uint* m_hCellEnd;
+	uint* m_hVelCellStart;
 	uint* m_hVelCellEnd;
+
 	// GPU data
-	float* m_dPos;
-	float* m_dVel;
-	float* m_dScalar;
+	float* m_dPos;          // particle positions
+	float* m_dSortedPos;
+	float* m_dMom;          // particle momenta
+	float* m_dSortedMom;
+	float* m_dAngMom;       // particle angular momenta
+	float* m_dSortedAngMom;
+	float* m_dMass;         // particle mass
+	float* m_dSortedMass;
+	float* m_dScalar;       // particle scalars
+	float* m_dSortedScalar;
+	float* m_dDiamBins;     // particle droplet histogram
+	float* m_dSortedDiamBins;
 	float* m_dRandom;
+	float* m_dColors;
 	//float *m_dRandom1;
 	//float *m_dRandom2;
-	float* m_dDiamBins;
-	float* m_dColors;
 
 	// Now track the CFD stuff in potentially bigger arrays
     float* m_hUz;
@@ -307,7 +321,7 @@ protected:
 	float* m_cellScalar;
 	float* m_cellD10;
 	float* m_cellMass;
-	uint* m_cellParts;
+	uint*  m_cellParts;
 	float* m_cellRMSScalar;
 	float* m_cellAvgScalar;
 	float* m_cellDiams;
@@ -315,10 +329,7 @@ protected:
 	//float *m_dSortedColor;
 	//float m_bVols[20];
 	//float* m_bVols;
-	float* m_dSortedPos;
-	float* m_dSortedVel;
-	float* m_dSortedScalar;
-	float* m_dSortedDiamBins;
+
 	// grid data for sorting method
 	uint* m_dGridParticleHash; // grid hash value for each particle
 	uint* m_dGridParticleIndex; // particle index for each particle

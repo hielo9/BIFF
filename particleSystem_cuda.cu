@@ -152,21 +152,25 @@ extern "C"
         numBlocks = iDivUp(n, numThreads);
     }
 
+    // This will use the "special" integrate_functor in particles_kernel_impl.cuh to move the particles
     void integrateSystem(float *pos,
-                         float *vel,
+                         float *mom,
+                         float *mass,
                          //float *scalar,
                          float deltaTime,
                          uint numParticles)
     {
-        thrust::device_ptr<float4> d_pos4((float4 *)pos);
-        thrust::device_ptr<float4> d_vel4((float4 *)vel);
-        //thrust::device_ptr<float2>  d_scalar((float2 *)scalar);
+        //thrust::device_ptr<float4> d_pos4((float4 *)pos);
+        //thrust::device_ptr<float4> d_vel4((float4 *)vel);
+        thrust::device_ptr<float3> d_pos3((float3 *)pos);
+        thrust::device_ptr<float3> d_mom3((float3 *)mom);
+        thrust::device_ptr<float>  d_mass((float  *)mass);
 
         thrust::for_each(
-        	thrust::make_zip_iterator(thrust::make_tuple(d_pos4, d_vel4)),
-            //thrust::make_zip_iterator(thrust::make_tuple(d_pos4, d_vel4, d_scalar)),
-        	thrust::make_zip_iterator(thrust::make_tuple(d_pos4+numParticles, d_vel4+numParticles)),
-            //thrust::make_zip_iterator(thrust::make_tuple(d_pos4+numParticles, d_vel4+numParticles, d_scalar+numParticles)),
+        	//thrust::make_zip_iterator(thrust::make_tuple(d_pos4, d_vel4)),
+        	//thrust::make_zip_iterator(thrust::make_tuple(d_pos4+numParticles, d_vel4+numParticles)),
+        	thrust::make_zip_iterator(thrust::make_tuple(d_pos3, d_mom3, d_mass)),
+        	thrust::make_zip_iterator(thrust::make_tuple(d_pos3+numParticles, d_mom3+numParticles, d_mass+numParticles)),
             integrate_functor(deltaTime));
     }
 
